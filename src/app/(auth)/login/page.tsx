@@ -191,43 +191,6 @@ export default function LoginPage() {
               "تسجيل الدخول"
             )}
           </button>
-
-          {/* فصل */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300 dark:border-gray-600" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400">
-                أو عبر
-              </span>
-            </div>
-          </div>
-<Link
-  href="/forgot-password"
-  className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400"
->
-  نسيت كلمة المرور؟
-</Link>
-          {/* أزرار OAuth */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => signIn("github", { callbackUrl })}
-              className="w-full inline-flex justify-center items-center gap-2 py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-            >
-              <span className="text-xl">🐙</span>
-              GitHub
-            </button>
-            <button
-              type="button"
-              onClick={() => signIn("google", { callbackUrl })}
-              className="w-full inline-flex justify-center items-center gap-2 py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-            >
-              <span className="text-xl">🔵</span>
-              Google
-            </button>
-          </div>
         </form>
 
         {/* ميزات إضافية */}

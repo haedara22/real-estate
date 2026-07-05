@@ -16,9 +16,11 @@ import {
 export default function ResetPasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
-  const email = searchParams.get("email");
+  const tokenFromUrl = searchParams.get("token");
+  const emailFromUrl = searchParams.get("email");
 
+  const [token, setToken] = useState(tokenFromUrl || "");
+  const [email, setEmail] = useState(emailFromUrl || "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,18 +31,19 @@ export default function ResetPasswordPage() {
   const [tokenValid, setTokenValid] = useState<boolean | null>(null);
   const [checkingToken, setCheckingToken] = useState(true);
 
-  // التحقق من صحة الرمز
+  // ✅ التحقق من صحة الرمز
   useEffect(() => {
     async function validateToken() {
       if (!token || !email) {
         setTokenValid(false);
         setCheckingToken(false);
+        setError("الرمز والبريد الإلكتروني مطلوبان");
         return;
       }
 
       try {
         const response = await fetch(
-          `/api/auth/validate-reset-token?token=${token}&email=${email}`
+          `/api/auth/validate-reset-token?token=${token}&email=${encodeURIComponent(email)}`
         );
         const data = await response.json();
 
@@ -48,26 +51,30 @@ export default function ResetPasswordPage() {
           setTokenValid(true);
         } else {
           setTokenValid(false);
-          setError(data.error || "الرابط غير صالح أو منتهي الصلاحية");
+          setError(data.error || "الرمز غير صالح أو منتهي الصلاحية");
         }
       } catch (err) {
         setTokenValid(false);
-        setError("حدث خطأ في التحقق من الرابط");
+        setError("حدث خطأ في التحقق من الرمز");
       } finally {
         setCheckingToken(false);
       }
     }
 
-    validateToken();
+    if (token && email) {
+      validateToken();
+    } else {
+      setCheckingToken(false);
+    }
   }, [token, email]);
 
+  // ✅ إعادة تعيين كلمة المرور
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     setSuccess(false);
 
-    // التحقق من صحة كلمة المرور
     if (password.length < 8) {
       setError("كلمة المرور يجب أن تكون 8 أحرف على الأقل");
       setLoading(false);
@@ -121,16 +128,16 @@ export default function ResetPasswordPage() {
             <AlertCircle className="w-10 h-10 text-red-600 dark:text-red-400" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            الرابط غير صالح
+            الرقم غير صالح
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            {error || "رابط إعادة التعيين غير صالح أو منتهي الصلاحية"}
+            {error || "رمز إعادة التعيين غير صالح أو منتهي الصلاحية"}
           </p>
           <Link
             href="/forgot-password"
             className="inline-block bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition"
           >
-            طلب رابط جديد
+            طلب رمز جديد
           </Link>
         </div>
       </div>
@@ -164,12 +171,11 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4">
       <div className="max-w-md w-full">
-        {/* زر العودة */}
         <Link
           href="/login"
           className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 transition mb-6"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-5 h-5" />
           العودة لتسجيل الدخول
         </Link>
 
@@ -184,6 +190,11 @@ export default function ResetPasswordPage() {
             <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">
               أدخل كلمة مرور جديدة لحسابك
             </p>
+            {email && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                🔑 البريد: <span className="font-medium">{email}</span>
+              </p>
+            )}
           </div>
 
           {error && (
@@ -206,7 +217,6 @@ export default function ResetPasswordPage() {
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                   placeholder="••••••••"
                   required
-                  disabled={loading}
                 />
                 <button
                   type="button"
@@ -217,7 +227,7 @@ export default function ResetPasswordPage() {
                 </button>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                يجب أن تكون 8 أحرف على الأقل
+                8 أحرف على الأقل
               </p>
             </div>
 
@@ -233,7 +243,6 @@ export default function ResetPasswordPage() {
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                   placeholder="••••••••"
                   required
-                  disabled={loading}
                 />
                 <button
                   type="button"

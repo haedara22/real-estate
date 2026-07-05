@@ -2,16 +2,13 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, passwordResetTokens } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { randomBytes } from "crypto";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { email } = body;
 
+    // ✅ التحقق من وجود البريد الإلكتروني
     if (!email) {
       return NextResponse.json(
         { error: "البريد الإلكتروني مطلوب" },
@@ -19,28 +16,34 @@ export async function POST(request: Request) {
       );
     }
 
-    // التحقق من وجود المستخدم
+    // ✅ البحث عن المستخدم
     const user = await db
       .select()
       .from(users)
       .where(eq(users.email, email))
       .limit(1);
 
+    // ✅ لأسباب أمنية: نفس الرسالة في جميع الحالات
     if (!user || user.length === 0) {
-      // لا نكشف عن وجود المستخدم لأسباب أمنية
+      console.log(`⚠️ محاولة إعادة تعيين لبريد غير مسجل: ${email}`);
       return NextResponse.json({
-        message: "إذا كان البريد الإلكتروني مسجلاً، ستتلقى رابط إعادة التعيين",
+        message: "إذا كان البريد الإلكتروني مسجلاً، ستتلقى رمز إعادة التعيين",
       });
     }
 
     const userData = user[0];
 
-    // إنشاء رمز عشوائي
-    const token = randomBytes(32).toString("hex");
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 1); // صلاحية ساعة واحدة
+    // ✅ حذف الرموز القديمة غير المستخدمة
+    await db
+      .delete(passwordResetTokens)
+      .where(eq(passwordResetTokens.userId, userData.id));
 
-    // حفظ الرمز في قاعدة البيانات
+    // ✅ إنشاء رمز مكون من 6 أرقام
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15); // صلاحية 15 دقيقة
+
+    // ✅ حفظ الرمز في قاعدة البيانات
     await db.insert(passwordResetTokens).values({
       userId: userData.id,
       token,
@@ -48,55 +51,24 @@ export async function POST(request: Request) {
       used: false,
     });
 
-    // إنشاء رابط إعادة التعيين
-    const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${token}&email=${email}`;
+    // ✅ طباعة الرمز في Console للتطوير
+    console.log("🔑 ====== رمز إعادة التعيين ======");
+    console.log(`📧 البريد: ${email}`);
+    console.log(`🔑 الرمز: ${token}`);
+    console.log(`⏰ ينتهي في: ${expiresAt.toLocaleTimeString()}`);
+    console.log("==================================");
 
-    // إرسال البريد الإلكتروني
-    await resend.emails.send({
-      from: "سوريا للعقارات <haedarahasan69@gmail.com>",
-      to: email,
-      subject: "إعادة تعيين كلمة المرور",
-      html: `
-        <div style="direction: rtl; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f9f9f9; border-radius: 10px;">
-          <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #2563eb, #7c3aed); border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0;">🏠 سوريا للعقارات</h1>
-          </div>
-          <div style="padding: 30px; background: white; border-radius: 0 0 10px 10px;">
-            <h2 style="color: #1f2937; margin-top: 0;">إعادة تعيين كلمة المرور</h2>
-            <p style="color: #4b5563; line-height: 1.6;">
-              مرحباً ${userData.name}،
-            </p>
-            <p style="color: #4b5563; line-height: 1.6;">
-              لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بك. اضغط على الزر أدناه لإكمال العملية:
-            </p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${resetUrl}" style="display: inline-block; padding: 12px 30px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
-                إعادة تعيين كلمة المرور
-              </a>
-            </div>
-            <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
-              هذا الرابط صالح لمدة <strong>ساعة واحدة</strong> فقط.
-            </p>
-            <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
-              إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذه الرسالة.
-            </p>
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-            <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-              © 2026 سوريا للعقارات. جميع الحقوق محفوظة.
-            </p>
-          </div>
-        </div>
-      `,
-    });
-
+    // ✅ إرجاع الرمز للمستخدم (سيظهر في الصفحة)
     return NextResponse.json({
-      message: "تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني",
+      message: "تم إنشاء رمز إعادة التعيين",
+      token: token,
+      expiresAt: expiresAt.toISOString(),
     });
 
   } catch (error) {
-    console.error("Error in forgot-password:", error);
+    console.error("❌ Error in forgot-password:", error);
     return NextResponse.json(
-      { error: "فشل في إرسال رابط إعادة التعيين" },
+      { error: "فشل في إنشاء رمز إعادة التعيين" },
       { status: 500 }
     );
   }

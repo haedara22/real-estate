@@ -9,6 +9,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { token, email, password } = body;
 
+    // ✅ التحقق من جميع الحقول
     if (!token || !email || !password) {
       return NextResponse.json(
         { error: "جميع الحقول مطلوبة" },
@@ -16,6 +17,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // ✅ التحقق من قوة كلمة المرور
     if (password.length < 8) {
       return NextResponse.json(
         { error: "كلمة المرور يجب أن تكون 8 أحرف على الأقل" },
@@ -23,7 +25,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // جلب المستخدم
+    // ✅ جلب المستخدم
     const user = await db
       .select()
       .from(users)
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
 
     const userData = user[0];
 
-    // جلب الرمز والتحقق منه
+    // ✅ جلب الرمز والتحقق منه
     const resetToken = await db
       .select()
       .from(passwordResetTokens)
@@ -61,7 +63,7 @@ export async function POST(request: Request) {
 
     const tokenData = resetToken[0];
 
-    // التحقق من صلاحية الرمز
+    // ✅ التحقق من صلاحية الرمز
     if (new Date() > new Date(tokenData.expiresAt)) {
       return NextResponse.json(
         { error: "انتهت صلاحية الرمز" },
@@ -69,10 +71,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // تشفير كلمة المرور الجديدة
+    // ✅ تشفير كلمة المرور الجديدة
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // تحديث كلمة المرور
+    // ✅ تحديث كلمة المرور
     await db
       .update(users)
       .set({
@@ -81,7 +83,7 @@ export async function POST(request: Request) {
       })
       .where(eq(users.id, userData.id));
 
-    // تعليم الرمز كمستخدم
+    // ✅ تعليم الرمز كمستخدم
     await db
       .update(passwordResetTokens)
       .set({
@@ -89,12 +91,14 @@ export async function POST(request: Request) {
       })
       .where(eq(passwordResetTokens.id, tokenData.id));
 
+    console.log(`✅ تم إعادة تعيين كلمة المرور للمستخدم: ${email}`);
+
     return NextResponse.json({
       message: "تم إعادة تعيين كلمة المرور بنجاح",
     });
 
   } catch (error) {
-    console.error("Error resetting password:", error);
+    console.error("❌ Error resetting password:", error);
     return NextResponse.json(
       { error: "فشل في إعادة تعيين كلمة المرور" },
       { status: 500 }
