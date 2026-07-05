@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation"; // ✅ أضف usePathname
 import { 
   Heart, Share2, MessageCircle, Copy
 } from "lucide-react";
@@ -21,12 +21,23 @@ interface ActionButtonsProps {
 export function ActionButtons({ property }: ActionButtonsProps) {
   const { data: session } = useSession();
   const router = useRouter();
+  const pathname = usePathname(); // ✅ الحصول على المسار الحالي
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [message, setMessage] = useState("");
   const [toastMessage, setToastMessage] = useState("");
+
+  // ✅ الحصول على الرابط الكامل بدون window
+  const getCurrentUrl = () => {
+    // في بيئة التطوير
+    if (process.env.NODE_ENV === 'development') {
+      return `http://localhost:3000${pathname}`;
+    }
+    // في بيئة الإنتاج
+    return `${process.env.NEXT_PUBLIC_APP_URL || 'https://syria-real-estate.com'}${pathname}`;
+  };
 
   // التحقق من حالة المفضلة
   useEffect(() => {
@@ -47,7 +58,7 @@ export function ActionButtons({ property }: ActionButtonsProps) {
   // دالة إضافة/إزالة من المفضلة
   const toggleFavorite = async () => {
     if (!session) {
-      router.push("/login?callbackUrl=" + encodeURIComponent(window.location.pathname));
+      router.push("/login?callbackUrl=" + encodeURIComponent(pathname));
       return;
     }
 
@@ -73,7 +84,7 @@ export function ActionButtons({ property }: ActionButtonsProps) {
 
   // دالة المشاركة
   const shareProperty = async (platform?: string) => {
-    const url = window.location.href;
+    const url = getCurrentUrl(); // ✅ استخدام الدالة بدلاً من window.location
     const text = `🏠 شاهد هذا العقار الرائع: ${property.title}`;
 
     if (platform === "copy") {
@@ -117,7 +128,7 @@ export function ActionButtons({ property }: ActionButtonsProps) {
   // دالة التواصل مع الوكالة
   const sendMessage = async () => {
     if (!session) {
-      router.push("/login?callbackUrl=" + encodeURIComponent(window.location.pathname));
+      router.push("/login?callbackUrl=" + encodeURIComponent(pathname));
       return;
     }
 
@@ -216,7 +227,7 @@ export function ActionButtons({ property }: ActionButtonsProps) {
         <button
           onClick={() => {
             if (!session) {
-              router.push("/login?callbackUrl=" + encodeURIComponent(window.location.pathname));
+              router.push("/login?callbackUrl=" + encodeURIComponent(pathname));
             } else {
               setShowContactModal(true);
             }
