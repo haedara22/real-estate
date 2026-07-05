@@ -1,12 +1,14 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 
-export default function LoginPage() {
+// ✅ المكون الداخلي الذي يستخدم useSearchParams
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
@@ -26,43 +28,43 @@ export default function LoginPage() {
   }, [registered]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setError("");
-  setSuccess("");
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess("");
 
-  try {
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-      callbackUrl,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl,
+      });
 
-    if (result?.error) {
-      setError(result.error);
-    } else {
-      // ✅ جلب الجلسة بعد تسجيل الدخول لتحديد الدور
-      const sessionResponse = await fetch("/api/auth/session");
-      const sessionData = await sessionResponse.json();
-      const role = sessionData?.user?.role;
-
-      // ✅ التوجيه حسب الدور
-      if (role === "admin") {
-        router.push("/admin/dashboard");
-      } else if (role === "agency_owner" || role === "agency_staff") {
-        router.push("/agency/dashboard");
+      if (result?.error) {
+        setError(result.error);
       } else {
-        router.push(callbackUrl || "/");
+        // ✅ جلب الجلسة بعد تسجيل الدخول لتحديد الدور
+        const sessionResponse = await fetch("/api/auth/session");
+        const sessionData = await sessionResponse.json();
+        const role = sessionData?.user?.role;
+
+        // ✅ التوجيه حسب الدور
+        if (role === "admin") {
+          router.push("/admin/dashboard");
+        } else if (role === "agency_owner" || role === "agency_staff") {
+          router.push("/agency/dashboard");
+        } else {
+          router.push(callbackUrl || "/");
+        }
+        router.refresh();
       }
-      router.refresh();
+    } catch (err) {
+      setError("حدث خطأ غير متوقع");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    setError("حدث خطأ غير متوقع");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
@@ -208,5 +210,21 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ✅ الصفحة الرئيسية مع Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="mt-4 text-gray-600 dark:text-gray-400">جاري التحميل...</p>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

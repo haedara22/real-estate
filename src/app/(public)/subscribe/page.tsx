@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -28,7 +29,10 @@ interface Plan {
   featuresAr: string[];
 }
 
-export default function SubscribePage() {
+// ============================================
+// المكون الداخلي (يستخدم useSearchParams)
+// ============================================
+function SubscribeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const planId = searchParams.get("plan");
@@ -159,7 +163,7 @@ export default function SubscribePage() {
     }
   };
 
-  // ✅ خطة مجانية - تفعيل مباشر
+  // خطة مجانية - تفعيل مباشر
   const handleFreeSubscription = async () => {
     setSubmitting(true);
     try {
@@ -187,6 +191,7 @@ export default function SubscribePage() {
     }
   };
 
+  // شاشة التحميل
   if (loading || status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -195,7 +200,7 @@ export default function SubscribePage() {
     );
   }
 
-  // ✅ إذا كان هناك خطأ
+  // حالة الخطأ
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -229,7 +234,7 @@ export default function SubscribePage() {
     );
   }
 
-  // ✅ إذا كانت الخطة مجانية
+  // الخطة المجانية
   if (plan.price === "0") {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
@@ -287,7 +292,7 @@ export default function SubscribePage() {
     );
   }
 
-  // ✅ الخطة المدفوعة
+  // الخطة المدفوعة
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
       <div className="container mx-auto px-4 max-w-2xl">
@@ -438,5 +443,23 @@ export default function SubscribePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================
+// الصفحة الرئيسية مع Suspense
+// ============================================
+export default function SubscribePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="mt-4 text-gray-600 dark:text-gray-400">جاري التحميل...</p>
+        </div>
+      </div>
+    }>
+      <SubscribeContent />
+    </Suspense>
   );
 }
