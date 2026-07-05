@@ -1,0 +1,178 @@
+import { db } from "./index";
+import { subscriptionPlans } from "./schema/subscriptions";
+
+async function seedPlans() {
+  console.log("🌱 بدء إضافة خطط الاشتراك...");
+
+  const plans = [
+    {
+      name: "Free",
+      nameAr: "مجاني",
+      description: "خطة مجانية للبدء في عالم العقارات",
+      descriptionAr: "خطة مجانية للبدء في عالم العقارات",
+      price: "0",
+      currency: "USD",
+      interval: "month",
+      features: [
+        "3 عقارات",
+        "5 صور لكل عقار",
+        "دعم أساسي عبر البريد الإلكتروني",
+        "ظهور في نتائج البحث",
+        "إضافة إلى المفضلة",
+      ],
+      featuresAr: [
+        "٣ عقارات",
+        "٥ صور لكل عقار",
+        "دعم أساسي عبر البريد الإلكتروني",
+        "ظهور في نتائج البحث",
+        "إضافة إلى المفضلة",
+      ],
+      maxProperties: 3,
+      maxImagesPerProperty: 5,
+      maxFeaturedProperties: 0,
+      hasAnalytics: false,
+      hasPrioritySupport: false,
+      hasAdvancedAnalytics: false,
+      hasDedicatedSupport: false,
+      hasMarketingBoost: false,
+      isFeatured: false,
+      isActive: true,
+      displayOrder: 1,
+    },
+    {
+      name: "Basic",
+      nameAr: "أساسي",
+      description: "خطة مناسبة للوكالات الصغيرة",
+      descriptionAr: "خطة مناسبة للوكالات الصغيرة",
+      price: "5",
+      currency: "USD",
+      interval: "month",
+      features: [
+        "20 عقار",
+        "10 صور لكل عقار",
+        "دعم أولوية عبر البريد الإلكتروني",
+        "تحليلات أساسية للعقارات",
+        "ظهور مميز في نتائج البحث",
+        "إضافة إلى المفضلة",
+        "رفع صور عالية الجودة",
+      ],
+      featuresAr: [
+        "٢٠ عقار",
+        "١٠ صور لكل عقار",
+        "دعم أولوية عبر البريد الإلكتروني",
+        "تحليلات أساسية للعقارات",
+        "ظهور مميز في نتائج البحث",
+        "إضافة إلى المفضلة",
+        "رفع صور عالية الجودة",
+      ],
+      maxProperties: 20,
+      maxImagesPerProperty: 10,
+      maxFeaturedProperties: 2,
+      hasAnalytics: true,
+      hasPrioritySupport: true,
+      hasAdvancedAnalytics: false,
+      hasDedicatedSupport: false,
+      hasMarketingBoost: false,
+      isFeatured: false,
+      isActive: true,
+      displayOrder: 2,
+    },
+    {
+      name: "Premium",
+      nameAr: "مميز",
+      description: "خطة متقدمة للوكالات النشطة",
+      descriptionAr: "خطة متقدمة للوكالات النشطة",
+      price: "10",
+      currency: "USD",
+      interval: "month",
+      features: [
+        "100 عقار",
+        "20 صورة لكل عقار",
+        "ظهور في المقدمة في نتائج البحث",
+        "تحليلات متقدمة مع رسوم بيانية",
+        "دعم أولوية عبر البريد الإلكتروني والهاتف",
+        "مميز في الصفحة الرئيسية",
+        "تقارير شهرية مفصلة",
+        "إدارة فريق العمل (5 موظفين)",
+      ],
+      featuresAr: [
+        "١٠٠ عقار",
+        "٢٠ صورة لكل عقار",
+        "ظهور في المقدمة في نتائج البحث",
+        "تحليلات متقدمة مع رسوم بيانية",
+        "دعم أولوية عبر البريد الإلكتروني والهاتف",
+        "مميز في الصفحة الرئيسية",
+        "تقارير شهرية مفصلة",
+        "إدارة فريق العمل (٥ موظفين)",
+      ],
+      maxProperties: 100,
+      maxImagesPerProperty: 20,
+      maxFeaturedProperties: 5,
+      hasAnalytics: true,
+      hasPrioritySupport: true,
+      hasAdvancedAnalytics: true,
+      hasDedicatedSupport: false,
+      hasMarketingBoost: true,
+      isFeatured: true,
+      isActive: true,
+      displayOrder: 3,
+    },
+    {
+      name: "Enterprise",
+      nameAr: "احترافي",
+      description: "خطة مخصصة للوكالات الكبرى",
+      descriptionAr: "خطة مخصصة للوكالات الكبرى",
+      price: "20",
+      currency: "USD",
+      interval: "month",
+      features: [
+        "عقارات غير محدودة",
+        "صور غير محدودة لكل عقار",
+        "ظهور مميز في جميع الصفحات",
+        "تحليلات مخصصة مع تقارير متقدمة",
+        "دعم مخصص 24/7",
+        "تسويق مميز وحملات إعلانية",
+        "إدارة فريق عمل غير محدود",
+        "تخصيص كامل للصفحة الشخصية",
+        "استشارات عقارية مجانية",
+        "أولوية في العقارات الجديدة",
+      ],
+      featuresAr: [
+        "عقارات غير محدودة",
+        "صور غير محدودة لكل عقار",
+        "ظهور مميز في جميع الصفحات",
+        "تحليلات مخصصة مع تقارير متقدمة",
+        "دعم مخصص ٢٤/٧",
+        "تسويق مميز وحملات إعلانية",
+        "إدارة فريق عمل غير محدود",
+        "تخصيص كامل للصفحة الشخصية",
+        "استشارات عقارية مجانية",
+        "أولوية في العقارات الجديدة",
+      ],
+      maxProperties: 999999,
+      maxImagesPerProperty: 999,
+      maxFeaturedProperties: 50,
+      hasAnalytics: true,
+      hasPrioritySupport: true,
+      hasAdvancedAnalytics: true,
+      hasDedicatedSupport: true,
+      hasMarketingBoost: true,
+      isFeatured: true,
+      isActive: true,
+      displayOrder: 4,
+    },
+  ];
+
+  for (const plan of plans) {
+    await db.insert(subscriptionPlans).values(plan).onConflictDoNothing();
+  }
+
+  console.log("✅ تم إضافة خطط الاشتراك بنجاح!");
+}
+
+seedPlans()
+  .catch((e) => {
+    console.error("❌ خطأ:", e);
+    process.exit(1);
+  })
+  .finally(() => process.exit(0));
