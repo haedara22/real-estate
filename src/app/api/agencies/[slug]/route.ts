@@ -1,17 +1,37 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { agencies } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
+// ✅ استخدم NextRequest و params مع Promise
 export async function GET(
-  request: Request,
-  { params }: { params: { slug: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const { slug } = await params;
     
     const agency = await db
-      .select()
+      .select({
+        id: agencies.id,
+        ownerId: agencies.ownerId,
+        name: agencies.name,
+        slug: agencies.slug,
+        description: agencies.description,
+        logo: agencies.logo,
+        coverImage: agencies.coverImage,
+        address: agencies.address,
+        phone: agencies.phone,
+        email: agencies.email,
+        website: agencies.website,
+        isVerified: agencies.isVerified,
+        isActive: agencies.isActive,
+        rating: agencies.rating,
+        reviewCount: agencies.reviewCount,
+        metadata: agencies.metadata,
+        createdAt: agencies.createdAt,
+        updatedAt: agencies.updatedAt,
+      })
       .from(agencies)
       .where(eq(agencies.slug, slug))
       .limit(1);

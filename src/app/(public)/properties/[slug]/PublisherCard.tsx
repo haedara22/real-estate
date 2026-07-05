@@ -26,8 +26,11 @@ interface PublisherCardProps {
     role: string;
     isVerified: boolean;
     createdAt: Date;
+    facebook?: string | null;
+    twitter?: string | null;
+    instagram?: string | null;
   } | null;
-  propertyId?: string; // ✅ تأكد من وجود هذا
+  propertyId?: string;
 }
 
 export function PublisherCard({ owner, propertyId }: PublisherCardProps) {
@@ -125,7 +128,7 @@ export function PublisherCard({ owner, propertyId }: PublisherCardProps) {
                 <MessageCircle className="w-4 h-4" />
               </a>
               <button
-                onClick={() => copyToClipboard(owner.phone)}
+                onClick={() => copyToClipboard(owner.phone as string)}
                 className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition"
                 title="نسخ الرقم"
               >

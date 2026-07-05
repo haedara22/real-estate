@@ -79,7 +79,7 @@ async function getReportsData() {
       .from(properties)
       .groupBy(properties.purpose);
 
-    // 7. الاشتراكات حسب الخطة
+    // 7. الاشتراكات حسب الخطة (مع التحقق من null)
     const subscriptionsByPlan = await db
       .select({
         planId: userSubscriptions.planId,
@@ -92,11 +92,16 @@ async function getReportsData() {
     const plans = await db.select().from(subscriptionPlans);
     const planMap = new Map(plans.map(p => [p.id, p.nameAr]));
 
-    const subscriptionsByPlanWithNames = subscriptionsByPlan.map(item => ({
-      planName: planMap.get(item.planId) || "غير معروف",
-      count: item.count,
-    }));
-
+    // ✅ تصفية القيم null قبل استخدام planMap
+   // ✅ بعد (مع تحويل آمن)
+const subscriptionsByPlanWithNames = subscriptionsByPlan
+  .filter((item): item is { planId: string; count: number } => 
+    item.planId !== null && item.planId !== undefined
+  )
+  .map(item => ({
+    planName: planMap.get(item.planId) || "غير معروف",
+    count: item.count,
+  }));
     // 8. النشاط اليومي (آخر 7 أيام)
     const dailyActivity = await db
       .select({

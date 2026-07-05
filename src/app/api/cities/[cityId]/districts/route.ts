@@ -1,11 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { districts } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
+// ✅ استخدم NextRequest و params مع Promise
 export async function GET(
-  request: Request,
-  { params }: { params: { cityId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ cityId: string }> }
 ) {
   try {
     const { cityId } = await params;

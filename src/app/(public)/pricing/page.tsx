@@ -107,7 +107,6 @@ function PlanCard({ plan, isCurrent = false, isLoggedIn = false }: {
 
   const features = plan.featuresAr || plan.features || [];
 
-  // ✅ الخطة المجانية: دايمًا "مفعلة" وما تسوي شي
   const getSubscribeLink = () => {
     if (isFree) return "#";
     if (isCurrent) return "#";
@@ -138,14 +137,12 @@ function PlanCard({ plan, isCurrent = false, isLoggedIn = false }: {
         plan.isFeatured ? "ring-2 ring-yellow-500" : ""
       } ${isCurrent ? "ring-2 ring-green-500" : ""}`}
     >
-      {/* شارة الخطة المجانية */}
       {isFree && !isCurrent && (
         <div className="absolute top-0 left-0 right-0 bg-blue-500 text-white text-xs font-bold py-1 text-center">
           🆓 مفعلة تلقائياً - لا تحتاج دفع
         </div>
       )}
 
-      {/* شارة عادية */}
       {getBadge(plan.name) && !isFree && !isCurrent && (
         <div className={`absolute top-0 left-0 right-0 text-white text-xs font-bold py-1 text-center ${
           plan.name === "Basic" ? "bg-blue-500" :
@@ -157,7 +154,6 @@ function PlanCard({ plan, isCurrent = false, isLoggedIn = false }: {
         </div>
       )}
 
-      {/* شارة الخطة الحالية */}
       {isCurrent && !isFree && (
         <div className="absolute top-0 left-0 right-0 bg-green-500 text-white text-xs font-bold py-1 text-center">
           ✅ خطتك الحالية
@@ -167,7 +163,6 @@ function PlanCard({ plan, isCurrent = false, isLoggedIn = false }: {
       <div className={`p-6 ${
         (getBadge(plan.name) || isCurrent || isFree) ? "pt-8" : ""
       }`}>
-        {/* الأيقونة والاسم */}
         <div className="flex items-center gap-3 mb-4">
           <div className={`bg-gradient-to-r ${getColor(plan.name)} rounded-xl p-2 text-white`}>
             {getIcon(plan.name)}
@@ -182,7 +177,6 @@ function PlanCard({ plan, isCurrent = false, isLoggedIn = false }: {
           </div>
         </div>
 
-        {/* السعر */}
         <div className="mb-6">
           <div className="flex items-baseline gap-1">
             <span className="text-4xl font-bold text-gray-900 dark:text-white">
@@ -201,7 +195,6 @@ function PlanCard({ plan, isCurrent = false, isLoggedIn = false }: {
           )}
         </div>
 
-        {/* المميزات */}
         <div className="space-y-2.5 mb-6">
           {features.map((feature: string, index: number) => (
             <div key={index} className="flex items-start gap-2 text-sm">
@@ -211,7 +204,6 @@ function PlanCard({ plan, isCurrent = false, isLoggedIn = false }: {
           ))}
         </div>
 
-        {/* زر الاشتراك */}
         <Link
           href={getSubscribeLink()}
           className={`block w-full text-center py-3 rounded-lg font-semibold transition ${getButtonStyle()}`}
@@ -219,7 +211,6 @@ function PlanCard({ plan, isCurrent = false, isLoggedIn = false }: {
           {getButtonText()}
         </Link>
 
-        {/* ملاحظات */}
         {isFree && !isCurrent && (
           <p className="text-xs text-center text-blue-500 dark:text-blue-400 mt-3">
             🔓 مفعلة بشكل افتراضي - لا تحتاج إلى تفعيل
@@ -247,7 +238,6 @@ export default async function PricingPage() {
   const session = await auth();
   const plans = await getPlans();
   
-  // ✅ جلب خطة المستخدم الحالي إذا كان مسجلاً
   let userPlan = null;
   let isLoggedIn = false;
   
@@ -256,16 +246,64 @@ export default async function PricingPage() {
     userPlan = await getUserPlan(session.user.id);
   }
 
-  // ✅ تحديد الخطة الحالية للمستخدم
   const currentPlanId = userPlan?.planId || null;
 
-  // ✅ ترتيب الخطط (المجانية أولاً ثم المدفوعة)
   const freePlan = plans.find(p => p.name === "Free");
   const paidPlans = plans.filter(p => p.name !== "Free").sort((a, b) => Number(a.price) - Number(b.price));
   
   const sortedPlans = [
     ...(freePlan ? [freePlan] : []),
     ...paidPlans,
+  ];
+
+  // ✅ تعريف الميزات مع أنواع صحيحة
+  const featureConfigs = [
+    { 
+      key: "maxProperties" as const, 
+      label: "عدد العقارات",
+      format: (v: unknown) => {
+        const num = Number(v);
+        return num >= 999999 ? "♾️ غير محدود" : num;
+      }
+    },
+    { 
+      key: "maxImagesPerProperty" as const, 
+      label: "الصور لكل عقار",
+      format: (v: unknown) => {
+        const num = Number(v);
+        return num >= 999 ? "♾️ غير محدود" : num;
+      }
+    },
+    { 
+      key: "maxFeaturedProperties" as const, 
+      label: "عقارات مميزة",
+      format: (v: unknown) => Number(v)
+    },
+    { 
+      key: "hasAnalytics" as const, 
+      label: "تحليلات أساسية",
+      format: (v: unknown) => v ? "✅" : "❌"
+    },
+    { 
+      key: "hasPrioritySupport" as const, 
+      label: "دعم أولوية",
+      format: (v: unknown) => v ? "✅" : "❌"
+    },
+    { 
+      key: "hasAdvancedAnalytics" as const, 
+      label: "تحليلات متقدمة",
+      format: (v: unknown) => v ? "✅" : "❌"
+    },
+    { 
+      key: "hasDedicatedSupport" as const, 
+      label: "دعم مخصص",
+      format: (v: unknown) => v ? "✅" : "❌"
+    },
+    { 
+      key: "hasMarketingBoost" as const, 
+      label: "تسويق مميز",
+      format: (v: unknown) => v ? "✅" : "❌"
+    },
   ];
 
   return (
@@ -335,57 +373,16 @@ export default async function PricingPage() {
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { 
-                    key: "maxProperties", 
-                    label: "عدد العقارات",
-                    format: (v: number) => v >= 999999 ? "♾️ غير محدود" : v
-                  },
-                  { 
-                    key: "maxImagesPerProperty", 
-                    label: "الصور لكل عقار",
-                    format: (v: number) => v >= 999 ? "♾️ غير محدود" : v
-                  },
-                  { 
-                    key: "maxFeaturedProperties", 
-                    label: "عقارات مميزة",
-                    format: (v: number) => v
-                  },
-                  { 
-                    key: "hasAnalytics", 
-                    label: "تحليلات أساسية",
-                    format: (v: boolean) => v ? "✅" : "❌"
-                  },
-                  { 
-                    key: "hasPrioritySupport", 
-                    label: "دعم أولوية",
-                    format: (v: boolean) => v ? "✅" : "❌"
-                  },
-                  { 
-                    key: "hasAdvancedAnalytics", 
-                    label: "تحليلات متقدمة",
-                    format: (v: boolean) => v ? "✅" : "❌"
-                  },
-                  { 
-                    key: "hasDedicatedSupport", 
-                    label: "دعم مخصص",
-                    format: (v: boolean) => v ? "✅" : "❌"
-                  },
-                  { 
-                    key: "hasMarketingBoost", 
-                    label: "تسويق مميز",
-                    format: (v: boolean) => v ? "✅" : "❌"
-                  },
-                ].map((feature) => (
+                {featureConfigs.map((feature) => (
                   <tr key={feature.key} className="border-b border-gray-100 dark:border-gray-700/50">
                     <td className="text-right py-3 px-4 text-sm text-gray-700 dark:text-gray-300">
                       {feature.label}
                     </td>
                     {sortedPlans.map((plan) => {
-                      const value = plan[feature.key as keyof typeof plan];
+                      const value = plan[feature.key];
                       return (
                         <td key={plan.id} className="text-center py-3 px-4 text-sm text-gray-700 dark:text-gray-300">
-                          {feature.format(value as any)}
+                          {feature.format(value)}
                         </td>
                       );
                     })}

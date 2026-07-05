@@ -91,13 +91,14 @@ export default function AdminSettingsPage() {
     loadSettings();
   }, []);
 
-  // تحميل بيانات المستخدم
+  // ✅ تحميل بيانات المستخدم - استخدام as any لتجاوز مشكلة TypeScript
   useEffect(() => {
     if (session?.user) {
+      const user = session.user as any;
       setProfile({
-        name: session.user.name || "",
-        email: session.user.email || "",
-        phone: session.user.phone || "",
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
       });
     }
   }, [session]);

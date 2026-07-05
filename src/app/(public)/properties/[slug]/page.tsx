@@ -72,7 +72,7 @@ async function getProperty(slug: string) {
       agency = agencyResult[0] || null;
     }
 
-    // 6. جلب المالك (الناشر)
+    // 6. ✅ جلب المالك (مع تحويل isVerified من null إلى false)
     let owner = null;
     if (propertyData.userId) {
       const ownerResult = await db
@@ -89,7 +89,13 @@ async function getProperty(slug: string) {
         .from(users)
         .where(eq(users.id, propertyData.userId))
         .limit(1);
-      owner = ownerResult[0] || null;
+      
+      if (ownerResult && ownerResult.length > 0) {
+        owner = {
+          ...ownerResult[0],
+          isVerified: ownerResult[0].isVerified ?? false, // ✅ تحويل null إلى false
+        };
+      }
     }
 
     // 7. جلب عقارات مشابهة

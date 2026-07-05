@@ -55,17 +55,21 @@ async function getAgency(slug: string) {
       .where(eq(agencyStaff.agencyId, agencyData.id))
       .limit(10);
 
-    // جلب الموظفين مع معلومات المستخدم
+    // ✅ جلب الموظفين مع معلومات المستخدم (مع التحقق من null)
     const staffWithUsers = await Promise.all(
       staff.map(async (member) => {
-        const user = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, member.userId))
-          .limit(1);
+        let user = null;
+        if (member.userId) {
+          const userResult = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, member.userId))
+            .limit(1);
+          user = userResult[0] || null;
+        }
         return {
           ...member,
-          user: user[0] || null,
+          user: user,
         };
       })
     );

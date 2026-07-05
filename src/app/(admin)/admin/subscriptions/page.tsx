@@ -34,7 +34,6 @@ async function getSubscriptions() {
       .from(subscriptionPlans)
       .orderBy(subscriptionPlans.displayOrder);
 
-    // جلب عدد المشتركين لكل خطة
     const plansWithCounts = await Promise.all(
       plans.map(async (plan) => {
         const count = await db
@@ -78,12 +77,16 @@ async function getSubscriptionRequests() {
 
     const requestsWithDetails = await Promise.all(
       requests.map(async (req) => {
-        // ✅ استخدم eq بشكل صحيح
-        const user = await db
-          .select({ name: users.name, email: users.email })
-          .from(users)
-          .where(eq(users.id, req.userId))
-          .limit(1);
+        // ✅ التحقق من userId قبل استخدام eq
+        let user = null;
+        if (req.userId) {
+          const userResult = await db
+            .select({ name: users.name, email: users.email })
+            .from(users)
+            .where(eq(users.id, req.userId))
+            .limit(1);
+          user = userResult[0] || null;
+        }
 
         let plan = null;
         if (req.planId) {
@@ -97,7 +100,7 @@ async function getSubscriptionRequests() {
 
         return {
           ...req,
-          user: user[0] || null,
+          user: user,
           plan: plan,
         };
       })
@@ -140,6 +143,16 @@ function getColor(name: string) {
 export default async function AdminSubscriptionsPage() {
   const plans = await getSubscriptions();
   const requests = await getSubscriptionRequests();
+
+  const getStatusBadge = (status: string) => {
+    const statuses: Record<string, { label: string; color: string }> = {
+      pending: { label: "⏳ قيد المراجعة", color: "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300" },
+      approved: { label: "✅ موافق", color: "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300" },
+      rejected: { label: "❌ مرفوض", color: "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300" },
+      expired: { label: "⏰ منتهي", color: "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300" },
+    };
+    return statuses[status] || statuses.pending;
+  };
 
   return (
     <div>
@@ -229,96 +242,91 @@ export default async function AdminSubscriptionsPage() {
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
           📋 طلبات الاشتراك
         </h2>
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700/50">
-                <tr>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">المستخدم</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">الخطة</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">المبلغ</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">الحالة</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">التاريخ</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {requests.map((req) => {
-                  const statusColors = {
-                    pending: "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400",
-                    approved: "bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400",
-                    rejected: "bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400",
-                    expired: "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400",
-                  };
-                  
-                  const statusLabels = {
-                    pending: "قيد المراجعة",
-                    approved: "موافق",
-                    rejected: "مرفوض",
-                    expired: "منتهي",
-                  };
-
-                  return (
-                    <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white text-sm">
-                            {req.user?.name || "غير معروف"}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {req.user?.email}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          {req.plan?.nameAr || "غير معروف"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                          ${req.amount}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs px-2.5 py-1 rounded-full ${statusColors[req.status as keyof typeof statusColors]}`}>
-                          {statusLabels[req.status as keyof typeof statusLabels] || req.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(req.createdAt).toLocaleDateString('ar-SA')}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {req.paymentProof && (
-                            <a
-                              href={req.paymentProof}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                            >
-                              <Eye className="w-4 h-4 text-gray-500" />
-                            </a>
-                          )}
-                          {req.status === "pending" && req.userId && req.planId && (
-                            <>
-                              <AdminApproveButton 
-                                requestId={req.id} 
-                                userId={req.userId} 
-                                planId={req.planId} 
-                              />
-                              <AdminRejectButton requestId={req.id} />
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        {requests.length === 0 ? (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 text-center">
+            <div className="text-4xl mb-4">📭</div>
+            <p className="text-gray-600 dark:text-gray-400">لا توجد طلبات اشتراك حالياً</p>
           </div>
-        </div>
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700/50">
+                  <tr>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">المستخدم</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">الخطة</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">المبلغ</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">الحالة</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">التاريخ</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {requests.map((req) => {
+                    const statusBadge = getStatusBadge(req.status);
+                    
+                    return (
+                      <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                        <td className="px-4 py-3">
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white text-sm">
+                              {req.user?.name || "غير معروف"}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {req.user?.email}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {req.plan?.nameAr || "غير معروف"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            ${req.amount}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs px-2.5 py-1 rounded-full ${statusBadge.color}`}>
+                            {statusBadge.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                          {new Date(req.createdAt).toLocaleDateString('ar-SA')}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {req.paymentProof && (
+                              <a
+                                href={req.paymentProof}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                              >
+                                <Eye className="w-4 h-4 text-gray-500" />
+                              </a>
+                            )}
+                            {req.status === "pending" && req.userId && req.planId && (
+                              <>
+                                <AdminApproveButton 
+                                  requestId={req.id} 
+                                  userId={req.userId} 
+                                  planId={req.planId} 
+                                />
+                                <AdminRejectButton requestId={req.id} />
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
