@@ -40,19 +40,28 @@ export function Header() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // التحقق من حالة التمرير
+  // ✅ التحقق من حالة التمرير - متوافق مع SSR
   useEffect(() => {
-    const handleScroll = () => {
+    // التأكد من أن الكود يعمل فقط في المتصفح
+    if (typeof window !== 'undefined') {
+      const handleScroll = () => {
+        setIsScrolled(window.scrollY > 10);
+      };
+      
+      // تعيين القيمة الأولية
       setIsScrolled(window.scrollY > 10);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+      
+      window.addEventListener("scroll", handleScroll);
+      return () => window.removeEventListener("scroll", handleScroll);
+    }
   }, []);
 
-  // التحقق من الوضع الليلي
+  // ✅ التحقق من الوضع الليلي - متوافق مع SSR
   useEffect(() => {
-    const isDark = document.documentElement.classList.contains("dark");
-    setIsDarkMode(isDark);
+    if (typeof window !== 'undefined') {
+      const isDark = document.documentElement.classList.contains("dark");
+      setIsDarkMode(isDark);
+    }
   }, []);
 
   const toggleDarkMode = () => {
@@ -151,6 +160,7 @@ export function Header() {
             <button
               onClick={toggleDarkMode}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+              aria-label="تبديل الوضع الليلي"
             >
               {isDarkMode ? (
                 <Sun className="w-5 h-5 text-yellow-500" />
@@ -163,6 +173,7 @@ export function Header() {
             <Link
               href="/contact"
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+              aria-label="الاتصال بنا"
             >
               <Phone className="w-5 h-5 text-gray-700 dark:text-gray-300" />
             </Link>
@@ -173,6 +184,7 @@ export function Header() {
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                  aria-label="قائمة المستخدم"
                 >
                   <div className="relative w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
                     {session.user?.name?.[0] || "U"}
@@ -260,15 +272,7 @@ export function Header() {
                         })
                       )}
                     </div>
-{session?.user?.role === "admin" && (
-  <Link
-    href="/admin/dashboard"
-    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-  >
-    <Shield className="w-4 h-4" />
-    لوحة التحكم
-  </Link>
-)}
+
                     {/* زر تسجيل الخروج */}
                     <div className="p-2 border-t border-gray-200 dark:border-gray-700">
                       <button
@@ -308,6 +312,7 @@ export function Header() {
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+            aria-label="فتح القائمة"
           >
             {isMenuOpen ? (
               <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
