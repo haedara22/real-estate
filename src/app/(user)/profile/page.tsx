@@ -61,7 +61,7 @@ export default function ProfilePage() {
     fetchPlans();
   }, []);
 
-  // ترقية الخطة
+  // ✅ ترقية الخطة - إصلاح مشكلة window.location
   const upgradePlan = async (planId: string) => {
     setUpgrading(true);
     setMessage(null);
@@ -81,7 +81,11 @@ export default function ProfilePage() {
 
       setMessage({ type: 'success', text: '✅ تم ترقية الخطة بنجاح!' });
       await update(); // تحديث الجلسة
-      setTimeout(() => window.location.reload(), 1500);
+      
+      // ✅ استخدام router.refresh() بدلاً من window.location.reload()
+      setTimeout(() => {
+        router.refresh();
+      }, 1500);
 
     } catch (error) {
       setMessage({ 
@@ -93,6 +97,7 @@ export default function ProfilePage() {
     }
   };
 
+  // ✅ التحقق من الجلسة
   if (!session) {
     router.push("/login");
     return null;
@@ -113,7 +118,7 @@ export default function ProfilePage() {
           </div>
           <Link
             href="/settings"
-            className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 transition"
           >
             تعديل الملف
           </Link>
@@ -220,7 +225,10 @@ export default function ProfilePage() {
             {availablePlans
               .filter(plan => plan.id !== userPlan?.id)
               .map((plan) => (
-                <div key={plan.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:border-blue-500 transition">
+                <div 
+                  key={plan.id} 
+                  className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:border-blue-500 transition"
+                >
                   <h4 className="font-bold text-gray-900 dark:text-white">
                     {plan.nameAr}
                   </h4>

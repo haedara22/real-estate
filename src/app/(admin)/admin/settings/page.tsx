@@ -91,7 +91,7 @@ export default function AdminSettingsPage() {
     loadSettings();
   }, []);
 
-  // ✅ تحميل بيانات المستخدم - استخدام as any لتجاوز مشكلة TypeScript
+  // تحميل بيانات المستخدم
   useEffect(() => {
     if (session?.user) {
       const user = session.user as any;
@@ -227,11 +227,14 @@ export default function AdminSettingsPage() {
     }
   };
 
-  // إعادة ضبط الإعدادات
+  // ✅ إعادة ضبط الإعدادات - إصلاح مشكلة window.location
   const handleResetSettings = async () => {
     if (!confirm("هل أنت متأكد من إعادة ضبط جميع الإعدادات؟")) return;
 
     setLoading(true);
+    setError("");
+    setSuccess("");
+
     try {
       const response = await fetch("/api/settings/reset", {
         method: "POST",
@@ -242,8 +245,12 @@ export default function AdminSettingsPage() {
       }
 
       setSuccess("✅ تم إعادة ضبط الإعدادات بنجاح!");
-      // إعادة تحميل الإعدادات
-      window.location.reload();
+      
+      // ✅ استخدام router.refresh() بدلاً من window.location.reload()
+      setTimeout(() => {
+        router.refresh();
+      }, 1500);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "حدث خطأ غير متوقع");
     } finally {
