@@ -1,11 +1,9 @@
 {
   "name": "real-estate",
   "compatibility_date": "2026-07-06",
-  "pages_build_output_dir": "out",  // <- غيرها من .next/static إلى out
+  "compatibility_flags": ["nodejs_compat"],
+  "pages_build_output_dir": ".next/static",
   "observability": {
     "enabled": true
-  },
-  "compatibility_flags": [
-    "nodejs_compat"
-  ]
+  }
 }
