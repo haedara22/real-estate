@@ -1,5 +1,0 @@
-name = "real-estate"
-compatibility_date = "2026-07-06"
-
-[assets]
-directory = ".next/static"
