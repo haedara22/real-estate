@@ -1,13 +1,9 @@
-// src/middleware.ts
+// src/proxy.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-// ✅ مهم جداً - تشغيل على Edge Runtime
-export const runtime = 'edge';
-
-export async function middleware(request: NextRequest) {
-  // ✅ الحصول على التوكن بطريقة متوافقة مع Edge
+export async function proxy(request: NextRequest) {
   const token = await getToken({ 
     req: request, 
     secret: process.env.NEXTAUTH_SECRET 
@@ -28,7 +24,6 @@ export async function middleware(request: NextRequest) {
     if (role === "agency_owner" || role === "agency_staff") {
       return NextResponse.redirect(new URL("/agency/dashboard", request.url));
     }
-    // المستخدم العادي أو الزائر يبقى في الصفحة الرئيسية
     return NextResponse.next();
   }
 
@@ -50,7 +45,6 @@ export async function middleware(request: NextRequest) {
     "/terms"
   ];
   
-  // إذا كانت الصفحة عامة ولا تحتاج تسجيل دخول
   if (publicPaths.some(p => path === p || path.startsWith(`${p}/`))) {
     return NextResponse.next();
   }
@@ -59,7 +53,6 @@ export async function middleware(request: NextRequest) {
   // 3. التحقق من المصادقة
   // ============================================
 
-  // إذا لم يكن مسجلاً دخول → إعادة توجيه لتسجيل الدخول
   if (!isLoggedIn) {
     const url = new URL("/login", request.url);
     url.searchParams.set("callbackUrl", path);
@@ -102,15 +95,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ============================================
-  // 5. السماح بالوصول
-  // ============================================
-
   return NextResponse.next();
 }
 
 // ============================================
-// تكوين المسارات التي يتم تطبيق الميدلوير عليها
+// تكوين المسارات
 // ============================================
 
 export const config = {
