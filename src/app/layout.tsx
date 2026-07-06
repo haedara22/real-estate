@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Header } from "@/components/layouts/Header";
+import "@/lib/browser"; // ✅ أضف هذا السطر في البداية
 
 const inter = Inter({ subsets: ["latin"] });
 
