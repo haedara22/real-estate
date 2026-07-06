@@ -1,65 +1,46 @@
+// src/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-export async function proxy(request: NextRequest) {
+// ✅ مهم جداً - تشغيل على Edge Runtime
+export const runtime = 'edge';
+
+export async function middleware(request: NextRequest) {
+  // ✅ الحصول على التوكن بطريقة متوافقة مع Edge
   const token = await getToken({ 
     req: request, 
     secret: process.env.NEXTAUTH_SECRET 
   });
   
   const path = request.nextUrl.pathname;
+  const isLoggedIn = !!token;
+  const role = token?.role as string || '';
 
   // ============================================
   // 1. التوجيه حسب الدور عند الصفحة الرئيسية
   // ============================================
   
-  // ✅ إذا كان المستخدم مديراً وذهب للصفحة الرئيسية
-  if (path === "/" && token?.role === "admin") {
-    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
-  }
-
-  // ✅ إذا كان المستخدم مالك وكالة وذهب للصفحة الرئيسية
-  if (path === "/" && (token?.role === "agency_owner" || token?.role === "agency_staff")) {
-    return NextResponse.redirect(new URL("/agency/dashboard", request.url));
-  }
-
-  // ============================================
-  // 2. منع الوصول غير المصرح به حسب الدور
-  // ============================================
-
-  // ✅ إذا كان المستخدم مديراً وحاول الوصول لصفحة غير مسموحة
-  if (token?.role === "admin" && !path.startsWith("/admin") && !path.startsWith("/api") && !path.startsWith("/_next")) {
-    const publicPaths = ["/login", "/register", "/api/auth", "/"];
-    if (!publicPaths.some(p => path.startsWith(p))) {
+  if (path === "/") {
+    if (role === "admin") {
       return NextResponse.redirect(new URL("/admin/dashboard", request.url));
     }
-  }
-
-  // ✅ إذا كان المستخدم وكالة وحاول الوصول لصفحة غير مسموحة
-  if ((token?.role === "agency_owner" || token?.role === "agency_staff") && 
-      !path.startsWith("/agency") && 
-      !path.startsWith("/properties") && 
-      !path.startsWith("/api") && 
-      !path.startsWith("/_next")) {
-    const publicPaths = ["/", "/login", "/register", "/api/auth", "/pricing", "/agencies", "/contact"];
-    if (!publicPaths.some(p => path.startsWith(p))) {
+    if (role === "agency_owner" || role === "agency_staff") {
       return NextResponse.redirect(new URL("/agency/dashboard", request.url));
     }
+    // المستخدم العادي أو الزائر يبقى في الصفحة الرئيسية
+    return NextResponse.next();
   }
 
   // ============================================
-  // 3. التحقق من المصادقة (الصفحات المحمية)
+  // 2. الصفحات العامة
   // ============================================
 
-  // الصفحات العامة التي لا تحتاج تسجيل دخول
   const publicPaths = [
-    "/", 
     "/login", 
     "/register", 
     "/forgot-password", 
     "/reset-password",
-    "/api/auth",
     "/properties",
     "/agencies",
     "/pricing",
@@ -69,15 +50,17 @@ export async function proxy(request: NextRequest) {
     "/terms"
   ];
   
-  const isPublic = publicPaths.some(p => path === p || path.startsWith(`${p}/`));
-  
-  // الصفحات العامة - لا حاجة لتسجيل دخول
-  if (isPublic) {
+  // إذا كانت الصفحة عامة ولا تحتاج تسجيل دخول
+  if (publicPaths.some(p => path === p || path.startsWith(`${p}/`))) {
     return NextResponse.next();
   }
 
-  // إذا لم يكن هناك توكن (غير مسجل) → إعادة توجيه لتسجيل الدخول
-  if (!token) {
+  // ============================================
+  // 3. التحقق من المصادقة
+  // ============================================
+
+  // إذا لم يكن مسجلاً دخول → إعادة توجيه لتسجيل الدخول
+  if (!isLoggedIn) {
     const url = new URL("/login", request.url);
     url.searchParams.set("callbackUrl", path);
     return NextResponse.redirect(url);
@@ -86,8 +69,6 @@ export async function proxy(request: NextRequest) {
   // ============================================
   // 4. التحقق من الصلاحيات حسب الدور
   // ============================================
-
-  const role = token.role as string;
 
   // لوحة التحكم (Admin)
   if (path.startsWith("/admin")) {
@@ -113,9 +94,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // الملف الشخصي والمفضلة
+  // الملف الشخصي والمفضلة والاشتراكات
   if (path.startsWith("/profile") || path.startsWith("/favorites") || path.startsWith("/subscriptions")) {
-    if (!token) {
+    if (!isLoggedIn) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
     return NextResponse.next();
@@ -129,7 +110,7 @@ export async function proxy(request: NextRequest) {
 }
 
 // ============================================
-// تكوين المسارات التي يتم تطبيق الـ Proxy عليها
+// تكوين المسارات التي يتم تطبيق الميدلوير عليها
 // ============================================
 
 export const config = {
