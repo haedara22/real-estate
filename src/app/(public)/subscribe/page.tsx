@@ -46,9 +46,9 @@ function SubscribeContent() {
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [paymentProofPreview, setPaymentProofPreview] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  const [qrError, setQrError] = useState(false);
 
-  // QR Code الخاص بشام كاش
-  const shamCashQR = "/images/sham-cash-qr.png";
+  // ✅ رقم شام كاش
   const shamCashNumber = "0991234567";
 
   // جلب الخطة
@@ -292,7 +292,7 @@ function SubscribeContent() {
     );
   }
 
-  // الخطة المدفوعة
+  // ✅ الخطة المدفوعة - مع QR Code
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
       <div className="container mx-auto px-4 max-w-2xl">
@@ -322,27 +322,41 @@ function SubscribeContent() {
               </div>
             </div>
 
+            {/* ✅ قسم الدفع بشام كاش مع QR Code */}
             <div className="mb-6 p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-center">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
                 📱 ادفع عبر شام كاش
               </h3>
               <div className="flex flex-col items-center">
-                <div className="relative w-48 h-48 bg-white p-2 rounded-xl shadow-lg">
-                  <Image
-                    src={shamCashQR}
-                    alt="QR Code شام كاش"
-                    fill
-                    className="object-contain p-4"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = "/images/placeholder.jpg";
-                    }}
-                  />
+                {/* ✅ عرض QR Code */}
+                <div className="relative w-48 h-48 bg-white p-2 rounded-xl shadow-lg mx-auto">
+                  {!qrError ? (
+                    <Image
+                      src="/qr.png"
+                      alt="QR Code شام كاش"
+                      fill
+                      className="object-contain p-2"
+                      onError={() => setQrError(true)}
+                      priority
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
+                      <div className="text-center">
+                        <AlertCircle className="w-12 h-12 text-red-400 mx-auto" />
+                        <p className="text-xs text-gray-500 mt-1">QR Code غير متوفر</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
+                
                 <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
                   رقم شام كاش: <span className="font-bold text-blue-600">{shamCashNumber}</span>
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   المبلغ: <span className="font-bold">${plan.price}</span>
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                  ⚠️ بعد الدفع، قم برفع صورة الإيصال أدناه
                 </p>
               </div>
             </div>
@@ -369,6 +383,7 @@ function SubscribeContent() {
                 </div>
               )}
 
+              {/* ✅ رفع إيصال الدفع */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   صورة إيصال الدفع *
