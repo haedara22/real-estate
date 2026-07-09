@@ -1,10 +1,12 @@
+// src/lib/auth/config.ts
+
 import { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users, agencies } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
@@ -51,13 +53,28 @@ export const authConfig = {
           throw new Error("الحساب غير مفعل");
         }
 
-        // إرجاع المستخدم مع الدور
+        // ✅ جلب agencyId من جدول agencies
+        let agencyId: string | null = null;
+        
+        // 1. تحقق إذا كان المستخدم مالك وكالة
+        const agency = await db
+          .select({ id: agencies.id })
+          .from(agencies)
+          .where(eq(agencies.ownerId, user.id))
+          .limit(1);
+        
+        if (agency && agency.length > 0) {
+          agencyId = agency[0].id;
+        }
+
+        // ✅ إرجاع المستخدم مع الدور و agencyId
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           image: user.image,
-          role: user.role, // الآن هذا مقبول لأننا وسعنا النوع
+          role: user.role,
+          agencyId: agencyId, // ✅ أضف هذا
         };
       },
     }),
@@ -67,6 +84,7 @@ export const authConfig = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.agencyId = (user as any).agencyId || null;
       }
       return token;
     },
@@ -74,6 +92,7 @@ export const authConfig = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        session.user.agencyId = (token.agencyId as string) || null;
       }
       return session;
     },

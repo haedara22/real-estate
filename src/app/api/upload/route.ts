@@ -1,13 +1,22 @@
+// src/app/api/upload/route.ts
+
 import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { auth } from "@/lib/auth";
 import { canAddImage } from "@/lib/subscription-utils";
+import { db } from "@/lib/db";
+import { propertyImages } from "@/lib/db/schema";
+
+// ✅ تعريف نوع للصورة المرتجعة
+interface UploadedImage {
+  id: string;
+  url: string;
+}
 
 export async function POST(request: Request) {
   try {
-    // ✅ التحقق من المصادقة
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json(
@@ -19,18 +28,19 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const files = formData.getAll("images") as File[];
     const propertyId = formData.get("propertyId") as string;
+    const isPaymentProof = formData.get("isPaymentProof") === "true";
     
     console.log("📦 استلام طلب رفع:", {
       filesCount: files.length,
       propertyId,
-      hasPaymentProof: formData.has("paymentProof"),
+      isPaymentProof,
+      keys: Array.from(formData.keys()),
     });
 
-    // ✅ إذا كان هناك paymentProof (لطلبات الاشتراك)
-    if (formData.has("paymentProof")) {
-      const paymentProof = formData.get("paymentProof") as File;
-      if (paymentProof) {
-        // التحقق من حجم الملف
+    // ✅ إذا كان paymentProof
+    if (formData.has("paymentProof") || isPaymentProof) {
+      const paymentProof = formData.get("paymentProof") as File || files[0];
+      if (paymentProof && paymentProof instanceof File) {
         if (paymentProof.size > 5 * 1024 * 1024) {
           return NextResponse.json(
             { error: "حجم الملف يجب أن يكون أقل من 5 ميجابايت" },
@@ -51,7 +61,8 @@ export async function POST(request: Request) {
         await writeFile(filepath, buffer);
         
         return NextResponse.json({ 
-          urls: [`/uploads/payments/${filename}`] 
+          urls: [`/uploads/payments/${filename}`],
+          isPaymentProof: true,
         });
       }
     }
@@ -64,15 +75,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // ✅ التحقق من وجود propertyId (لرفع صور العقار)
-    if (!propertyId) {
+    // ✅ التحقق من وجود propertyId
+    if (!propertyId || propertyId === "undefined" || propertyId === "null") {
       return NextResponse.json(
         { error: "معرف العقار مطلوب" },
         { status: 400 }
       );
     }
 
-    // ✅ التحقق من صلاحية إضافة صور
+    // ✅ التحقق من الصلاحية
     const canAdd = await canAddImage(propertyId, session.user.id);
     if (!canAdd.allowed) {
       return NextResponse.json(
@@ -81,39 +92,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // ✅ التحقق من عدد الصور
-    if (files.length > 10) {
-      return NextResponse.json(
-        { error: "يمكن رفع 10 صور كحد أقصى في المرة الواحدة" },
-        { status: 400 }
-      );
-    }
-
-    // ✅ التحقق من أنواع الملفات
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    // ✅ أنواع الملفات المسموحة
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg", "image/svg+xml"];
     const invalidFiles = files.filter(file => !allowedTypes.includes(file.type));
     
     if (invalidFiles.length > 0) {
       return NextResponse.json(
-        { error: "أنواع الملفات غير مدعومة. يرجى رفع صور بصيغة JPEG, PNG, WEBP أو GIF" },
+        { error: `أنواع الملفات غير مدعومة` },
         { status: 400 }
       );
     }
 
-    // ✅ التحقق من حجم كل ملف
-    const largeFiles = files.filter(file => file.size > 5 * 1024 * 1024);
-    if (largeFiles.length > 0) {
-      return NextResponse.json(
-        { error: "حجم الملف يجب أن يكون أقل من 5 ميجابايت لكل صورة" },
-        { status: 400 }
-      );
-    }
-
-    // ✅ رفع الصور
+    // ✅ رفع الصور وحفظها بقاعدة البيانات
     const uploadDir = join(process.cwd(), "public/uploads/properties");
     await mkdir(uploadDir, { recursive: true });
 
-    const urls: string[] = [];
+    const uploadedImages: UploadedImage[] = [];
 
     for (const file of files) {
       const bytes = await file.arrayBuffer();
@@ -122,17 +116,53 @@ export async function POST(request: Request) {
       const ext = file.name.split(".").pop() || "png";
       const filename = `${randomUUID()}.${ext}`;
       const filepath = join(uploadDir, filename);
+      const url = `/uploads/properties/${filename}`;
       
       await writeFile(filepath, buffer);
-      urls.push(`/uploads/properties/${filename}`);
+      
+      // ✅ حفظ الصورة في قاعدة البيانات
+      try {
+        // ✅ استخدم as any أو حدد النوع
+        const result = await db
+          .insert(propertyImages)
+          .values({
+            propertyId: propertyId,
+            url: url,
+            order: uploadedImages.length,
+            createdAt: new Date(),
+          })
+          .returning({
+            id: propertyImages.id,
+            url: propertyImages.url,
+          });
+
+        // ✅ تأكد من وجود نتيجة
+        if (result && result.length > 0) {
+          const newImage = result[0] as UploadedImage;
+          uploadedImages.push(newImage);
+          console.log(`✅ تم حفظ الصورة في قاعدة البيانات: ${url}`);
+        }
+      } catch (dbError) {
+        console.error("❌ فشل حفظ الصورة في قاعدة البيانات:", dbError);
+        // استمر مع بقية الصور
+      }
     }
 
-    console.log(`✅ تم رفع ${urls.length} صورة للعقار ${propertyId}`);
+    if (uploadedImages.length === 0) {
+      return NextResponse.json(
+        { error: "فشل حفظ الصور في قاعدة البيانات" },
+        { status: 500 }
+      );
+    }
+
+    console.log(`✅ تم رفع وحفظ ${uploadedImages.length} صورة للعقار ${propertyId}`);
 
     return NextResponse.json({ 
-      urls,
-      count: urls.length,
+      urls: uploadedImages.map(img => img.url),
+      images: uploadedImages,
+      count: uploadedImages.length,
       propertyId,
+      success: true,
     });
 
   } catch (error) {

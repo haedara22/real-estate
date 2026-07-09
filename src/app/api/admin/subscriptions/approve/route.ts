@@ -1,8 +1,11 @@
+// src/app/api/admin/subscriptions/approve/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { subscriptionRequests, userSubscriptions, users, subscriptionPlans, agencies } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
+import { createNotification } from "@/lib/notifications";
 
 export async function POST(req: NextRequest) {
   try {
@@ -68,7 +71,7 @@ export async function POST(req: NextRequest) {
       .insert(userSubscriptions)
       .values({
         userId: userId,
-        agencyId: agencyId, // ✅ ربط الوكالة
+        agencyId: agencyId,
         planId: planId,
         status: "active",
         startDate: startDate,
@@ -92,6 +95,41 @@ export async function POST(req: NextRequest) {
     console.log(`✅ تم تفعيل اشتراك ${selectedPlan.nameAr} للمستخدم ${userId}`);
     console.log(`   📌 الوكالة: ${agencyId || "غير مرتبطة"}`);
     console.log(`   📅 ينتهي في: ${endDate.toLocaleDateString()}`);
+
+    // ✅ ✅ ✅ إشعار للمستخدم بقبول الاشتراك
+    await createNotification({
+      userId: userId,
+      type: 'subscription_approved',
+      title: '✅ تم قبول طلب الاشتراك',
+      titleAr: '✅ تم قبول طلب الاشتراك',
+      message: `تم قبول طلب الاشتراك في خطة "${selectedPlan.nameAr}" بنجاح`,
+      messageAr: `تم قبول طلب الاشتراك في خطة "${selectedPlan.nameAr}" بنجاح`,
+      link: '/agency/subscriptions',
+      metadata: {
+        subscriptionId: subscription.id,
+        planId: planId,
+        planName: selectedPlan.nameAr,
+        expiresAt: endDate,
+        agencyId: agencyId,
+      },
+    });
+
+    // ✅ ✅ ✅ إشعار للأدمن (تأكيد الإجراء)
+    await createNotification({
+      userId: session.user.id,
+      type: 'system',
+      title: '✅ تمت الموافقة على طلب اشتراك',
+      titleAr: '✅ تمت الموافقة على طلب اشتراك',
+      message: `تمت الموافقة على طلب اشتراك خطة "${selectedPlan.nameAr}" للمستخدم ${session.user.name}`,
+      messageAr: `تمت الموافقة على طلب اشتراك خطة "${selectedPlan.nameAr}" للمستخدم ${session.user.name}`,
+      link: '/admin/subscriptions',
+      metadata: {
+        subscriptionId: subscription.id,
+        userId: userId,
+        planId: planId,
+        action: 'approved_by_admin',
+      },
+    });
 
     return NextResponse.json({
       message: "✅ تم الموافقة على الاشتراك وتفعيله",
