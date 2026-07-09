@@ -74,7 +74,7 @@ export const authConfig = {
           email: user.email,
           image: user.image,
           role: user.role,
-          agencyId: agencyId, // ✅ أضف هذا
+          agencyId: agencyId,
         };
       },
     }),
@@ -96,14 +96,26 @@ export const authConfig = {
       }
       return session;
     },
+    // ✅ إعادة التوجيه بعد تسجيل الدخول
+    async redirect({ url, baseUrl }) {
+      // إذا كان هناك callbackUrl، استخدمه
+      if (url.startsWith(baseUrl)) {
+        return url;
+      }
+      // ✅ دائماً العودة إلى الصفحة الرئيسية
+      return baseUrl;
+    },
   },
   pages: {
     signIn: "/login",
-    error: "/auth/error",
+    error: "/login", // ✅ بدلاً من /auth/error
   },
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 يوم
   },
   secret: process.env.NEXTAUTH_SECRET,
+  // ✅ إعدادات إضافية لبيئة Netlify
+  trustHost: true,
+  useSecureCookies: process.env.NODE_ENV === "production",
 } satisfies NextAuthConfig;
